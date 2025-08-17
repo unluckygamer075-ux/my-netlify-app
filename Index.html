@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Study Schedule</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        /* Custom animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-open {
+            animation: fadeIn 0.3s ease-out;
+        }
+        /* Smooth progress bar */
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+        /* Gradient border for containers */
+        .subject-container {
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            border: 2px solid transparent;
+            border-image: linear-gradient(to bottom right, #3b82f6, #14b8a6) 1;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-100 via-teal-50 to-purple-100 min-h-screen p-4 sm:p-8">
+    <header class="text-center mb-8">
+        <h1 class="text-4xl sm:text-5xl font-bold text-blue-800">My Study Schedule</h1>
+    </header>
+
+    <div class="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+        <button onclick="openCreateModal()" class="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-blue-700 transition duration-300">
+            + Create Subject
+        </button>
+        <button onclick="toggleFilterOptions()" class="bg-teal-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-teal-700 transition duration-300">
+            Filter
+        </button>
+    </div>
+
+    <div id="subjects" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto"></div>
+
+    <!-- Create Modal -->
+    <div id="createModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden" role="dialog" aria-labelledby="createModalTitle" aria-hidden="true">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md modal-open">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="createModalTitle" class="text-2xl font-semibold text-gray-800">Create New Subject</h2>
+                <button onclick="closeCreateModal()" class="text-gray-500 hover:text-gray-700 text-2xl" aria-label="Close">×</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label for="newSubjectName" class="block text-sm font-medium text-gray-700">Subject Name</label>
+                    <input type="text" id="newSubjectName" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Subject Name" />
+                    <span id="newSubjectNameError" class="text-red-500 text-sm hidden"></span>
+                </div>
+                <div>
+                    <label for="newTotalChapters" class="block text-sm font-medium text-gray-700">Total Chapters</label>
+                    <input type="number" id="newTotalChapters" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Total Chapters" min="0" />
+                    <span id="newTotalChaptersError" class="text-red-500 text-sm hidden"></span>
+                </div>
+                <div>
+                    <label for="newStartDate" class="block text-sm font-medium text-gray-700">Start Date</label>
+                    <input type="date" id="newStartDate" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                    <span id="newStartDateError" class="text-red-500 text-sm hidden"></span>
+                </div>
+                <div>
+                    <label for="newEndDate" class="block text-sm font-medium text-gray-700">End Date</label>
+                    <input type="date" id="newEndDate" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                    <span id="newEndDateError" class="text-red-500 text-sm hidden"></span>
+                </div>
+                <div>
+                    <label for="newCurrentChapter" class="block text-sm font-medium text-gray-700">Current Chapter</label>
+                    <input type="number" id="newCurrentChapter" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Current Chapter" value="0" min="0" />
+                    <span id="newCurrentChapterError" class="text-red-500 text-sm hidden"></span>
+                </div>
+                <div>
+                    <label for="newPriority" class="block text-sm font-medium text-gray-700">Priority</label>
+                    <select id="newPriority" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <option value="Medium">Medium Priority</option>
+                        <option value="High">High Priority</option>
+                        <option value="Low">Low Priority</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-4">
+                <button onclick="saveNewSubject()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300">Save Subject</button>
+                <button onclick="closeCreateModal()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition duration-300">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden" role="dialog" aria-labelledby="editModalTitle" aria-hidden="true">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md modal-open">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="editModalTitle" class="text-2xl font-semibold text-gray-800">Edit Subject</h2>
+                <button onclick="closeEditModal()" class="text-gray-500 hover:text-gray-700 text-2xl" aria-label="Close">×</button>
+            </div>
+            <div class="space-y-4">
+                <input type="hidden" id="editSubjectId" />
+                <div>
+                    <label for="editSubjectName" class="block text-sm font-medium text-gray-700">Subject Name</label>
+                    <input type="text" id="editSubjectName" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Subject Name" />
+                    <span id="editSubjectNameError" class="text-red-500 text-sm hidden"></span>
+                </div>
+                <div>
+                    <label for="editTotalChapters" class="block text-sm font-medium text-gray-700">Total Chapters</label>
+                    <input type="number" id="editTotalChapters" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Total Chapters" min="0" />
+                    <span id="editTotalChaptersError" class="text-red-500 text-sm hidden"></span>
+                </div>
+                <div>
+                    <label for="editStartDate" class="block text-sm font-medium text-gray-700">Start Date</label>
+                    <input type="date" id="editStartDate" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                    <span id="editStartDateError" class="text-red-500 text-sm hidden"></span>
+                </div>
+                <div>
+                    <label for="editEndDate" class="block text-sm font-medium text-gray-700">End Date</label>
+                    <input type="date" id="editEndDate" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                    <span id="editEndDateError" class="text-red-500 text-sm hidden"></span>
+                </div>
+                <div>
+                    <label for="editCurrentChapter" class="block text-sm font-medium text-gray-700">Current Chapter</label>
+                    <input type="number" id="editCurrentChapter" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Current Chapter" min="0" />
+                    <span id="editCurrentChapterError" class="text-red-500 text-sm hidden"></span>
+                </div>
+                <div>
+                    <label for="editPriority" class="block text-sm font-medium text-gray-700">Priority</label>
+                    <select id="editPriority" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <option value="Medium">Medium Priority</option>
+                        <option value="High">High Priority</option>
+                        <option value="Low">Low Priority</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-4">
+                <button onclick="saveEditedSubject()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300">Save Changes</button>
+                <button onclick="closeEditModal()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition duration-300">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Modal -->
+    <div id="filterModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden" role="dialog" aria-labelledby="filterModalTitle" aria-hidden="true">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm modal-open">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="filterModalTitle" class="text-2xl font-semibold text-gray-800">Filter Subjects</h2>
+                <button onclick="closeFilterModal()" class="text-gray-500 hover:text-gray-700 text-2xl" aria-label="Close">×</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label for="filterPriority" class="block text-sm font-medium text-gray-700">Priority</label>
+                    <select id="filterPriority" class="mt-1 w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <option value="All">All</option>
+                        <option value="High">High Priority</option>
+                        <option value="Medium">Medium Priority</option>
+                        <option value="Low">Low Priority</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-4">
+                <button onclick="applyFilters()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300">Apply</button>
+                <button onclick="closeFilterModal()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition duration-300">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center mt-12 py-4 border-t border-gray-200">
+        <p class="text-gray-600 text-sm">© 2025 My Study Schedule</p>
+    </footer>
+
+    <script>
+        let subjectsData = [];
+        let currentEditId = null;
+        let charts = {};
+
+        // Load from localStorage on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromLocalStorage();
+            renderSubjects();
+        });
+
+        // LocalStorage functions
+        function saveToLocalStorage() {
+            localStorage.setItem('subjectsData', JSON.stringify(subjectsData));
+        }
+
+        function loadFromLocalStorage() {
+            const data = localStorage.getItem('subjectsData');
+            if (data) {
+                subjectsData = JSON.parse(data);
+            }
+        }
+
+        // Modal Handling
+        function openCreateModal() {
+            const modal = document.getElementById("createModal");
+            modal.classList.remove('hidden');
+            trapFocus(modal);
+            document.getElementById('newSubjectName').focus();
+        }
+
+        function closeCreateModal() {
+            document.getElementById("createModal").classList.add('hidden');
+            resetCreateModalForm();
+            clearErrors('new');
+        }
+
+        function resetCreateModalForm() {
+            document.getElementById("newSubjectName").value = "";
+            document.getElementById("newTotalChapters").value = "";
+            document.getElementById("newStartDate").value = "";
+            document.getElementById("newEndDate").value = "";
+            document.getElementById("newCurrentChapter").value = "0";
+            document.getElementById("newPriority").value = "Medium";
+        }
+
+        function openEditModal(id) {
+            currentEditId = id;
+            const subject = subjectsData.find(s => s.id === id);
+            if (subject) {
+                document.getElementById("editSubjectId").value = subject.id;
+                document.getElementById("editSubjectName").value = subject.name;
+                document.getElementById("editTotalChapters").value = subject.totalChapters;
+                document.getElementById("editStartDate").value = subject.startDate;
+                document.getElementById("editEndDate").value = subject.endDate;
+                document.getElementById("editCurrentChapter").value = subject.currentChapter;
+                document.getElementById("editPriority").value = subject.priority;
+                const modal = document.getElementById("editModal");
+                modal.classList.remove('hidden');
+                trapFocus(modal);
+                document.getElementById('editSubjectName').focus();
+            }
+        }
+
+        function closeEditModal() {
+            document.getElementById("editModal").classList.add('hidden');
+            currentEditId = null;
+            clearErrors('edit');
+        }
+
+        function openFilterModal() {
+            const modal = document.getElementById("filterModal");
+            modal.classList.remove('hidden');
+            trapFocus(modal);
+            document.getElementById('filterPriority').focus();
+        }
+
+        function closeFilterModal() {
+            document.getElementById("filterModal").classList.add('hidden');
+        }
+
+        function toggleFilterOptions() {
+            openFilterModal();
+        }
+
+        // Focus trapping for accessibility
+        function trapFocus(modal) {
+            const focusableElements = modal.querySelectorAll('button, input, select');
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+            modal.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    if (e.shiftKey && document.activeElement === firstElement) {
+                        e.preventDefault();
+                        lastElement.focus();
+                    } else if (!e.shiftKey && document.activeElement === lastElement) {
+                        e.preventDefault();
+                        firstElement.focus();
+                    }
+                }
+            });
+        }
+
+        // Form validation and error handling
+        function clearErrors(prefix) {
+            document.querySelectorAll(`#${prefix}SubjectNameError, #${prefix}TotalChaptersError, #${prefix}StartDateError, #${prefix}EndDateError, #${prefix}CurrentChapterError`).forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+        }
+
+        function showError(inputId, message) {
+            const errorEl = document.getElementById(`${inputId}Error`);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+            return false;
+        }
+
+        function validateForm(prefix) {
+            clearErrors(prefix);
+            let isValid = true;
+            const name = document.getElementById(`${prefix}SubjectName`).value.trim();
+            const totalChapters = parseInt(document.getElementById(`${prefix}TotalChapters`).value) || 0;
+            const startDate = document.getElementById(`${prefix}StartDate`).value;
+            const endDate = document.getElementById(`${prefix}EndDate`).value;
+            const currentChapter = parseInt(document.getElementById(`${prefix}CurrentChapter`).value) || 0;
+
+            if (!name) {
+                isValid = showError(`${prefix}SubjectName`, 'Subject name is required.');
+            }
+            if (totalChapters < 0) {
+                isValid = showError(`${prefix}TotalChapters`, 'Total chapters cannot be negative.') && isValid;
+            }
+            if (!startDate) {
+                isValid = showError(`${prefix}StartDate`, 'Start date is required.') && isValid;
+            }
+            if (!endDate) {
+                isValid = showError(`${prefix}EndDate`, 'End date is required.') && isValid;
+            }
+            if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+                isValid = showError(`${prefix}EndDate`, 'End date must be after start date.') && isValid;
+            }
+            if (currentChapter < 0 || (totalChapters > 0 && currentChapter > totalChapters)) {
+                isValid = showError(`${prefix}CurrentChapter`, 'Current chapter must be between 0 and total chapters.') && isValid;
+            }
+            return isValid;
+        }
+
+        // Save New Subject
+        function saveNewSubject() {
+            console.log('Attempting to save new subject...');
+            if (!validateForm('new')) {
+                console.log('Validation failed');
+                return;
+            }
+
+            const name = document.getElementById("newSubjectName").value.trim();
+            const totalChapters = parseInt(document.getElementById("newTotalChapters").value) || 0;
+            const startDate = document.getElementById("newStartDate").value;
+            const endDate = document.getElementById("newEndDate").value;
+            const currentChapter = parseInt(document.getElementById("newCurrentChapter").value) || 0;
+            const priority = document.getElementById("newPriority").value;
+
+            const newSubject = {
+                id: Date.now(),
+                name,
+                totalChapters,
+                startDate,
+                endDate,
+                currentChapter,
+                priority,
+                progressLog: [],
+            };
+
+            console.log('New subject created:', newSubject);
+            subjectsData.push(newSubject);
+            saveToLocalStorage();
+            console.log('Subjects data updated:', subjectsData);
+            renderSubjects();
+            closeCreateModal();
+        }
+
+        // Save Edited Subject
+        function saveEditedSubject() {
+            if (!validateForm('edit')) return;
+            const id = parseInt(document.getElementById("editSubjectId").value);
+            const name = document.getElementById("editSubjectName").value.trim();
+            const totalChapters = parseInt(document.getElementById("editTotalChapters").value) || 0;
+            const startDate = document.getElementById("editStartDate").value;
+            const endDate = document.getElementById("editEndDate").value;
+            const currentChapter = parseInt(document.getElementById("editCurrentChapter").value) || 0;
+            const priority = document.getElementById("editPriority").value;
+
+                const subjectIndex = subjectsData.findIndex(s => s.id === id);
+            if (subjectIndex !== -1) {
+                subjectsData[subjectIndex] = {
+                    ...subjectsData[subjectIndex],
+                    name,
+                    totalChapters,
+                    startDate,
+                    endDate,
+                    currentChapter,
+                    priority
+                };
+                saveToLocalStorage();
+                renderSubjects();
+                closeEditModal();
+            }
+        }
+
+        // Delete Subject
+        function deleteSubject(id) {
+            if (confirm('Are you sure you want to delete this subject?')) {
+                if (charts[id]) {
+                    charts[id].destroy();
+                    delete charts[id];
+                }
+                subjectsData = subjectsData.filter(s => s.id !== id);
+                saveToLocalStorage();
+                renderSubjects();
+            }
+        }
+
+        // Helper to get today's date in YYYY-MM-DD
+        function getTodayDate() {
+            const today = new Date();
+            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        }
+
+        // Log Daily Progress (Fixed)
+        function logProgress(id, completed) {
+            const subject = subjectsData.find(s => s.id === id);
+            if (!subject) {
+                console.log('Subject not found:', id);
+                return;
+            }
+
+            const today = getTodayDate();
+            console.log('Logging progress for', subject.name, 'on', today, 'Completed:', completed);
+            console.log('Current progressLog:', subject.progressLog);
+
+            // Check if progress already logged today
+            const todayLog = subject.progressLog.find(log => log.date === today);
+            if (todayLog) {
+                console.log('Progress already logged for today:', todayLog);
+                alert('Progress already logged for today.');
+                return;
+            }
+
+            // Log progress
+            subject.progressLog.push({ date: today, completed });
+            if (completed && subject.currentChapter < subject.totalChapters) {
+                subject.currentChapter += 1;
+                console.log('Chapter incremented to:', subject.currentChapter);
+            }
+            saveToLocalStorage();
+            console.log('Progress logged:', subject.progressLog);
+            renderSubjects();
+        }
+
+        // Calculate Time Remaining
+        function getTimeRemaining(startDate, endDate) {
+            const today = new Date();
+            const end = new Date(endDate);
+            const start = new Date(startDate);
+            if (today > end) return null; // Don't show if end date is past
+
+            const diffMs = end - (today < start ? start : today);
+            const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            return { days, hours };
+        }
+
+        // Apply Filters
+        function applyFilters() {
+            const priority = document.getElementById('filterPriority').value;
+            let filteredSubjects = [...subjectsData];
+            if (priority !== 'All') {
+                filteredSubjects = filteredSubjects.filter(s => s.priority === priority);
+            }
+            renderSubjects(filteredSubjects);
+            closeFilterModal();
+        }
+
+        // Render Performance Graph
+        function renderGraph(subject, container) {
+            const canvasId = `chart-${subject.id}`;
+            const canvas = document.createElement('canvas');
+            canvas.id = canvasId;
+            canvas.className = 'mt-4';
+            container.appendChild(canvas);
+
+            const consistentDays = subject.progressLog.filter(log => log.completed).length;
+            const performanceScore = subject.totalChapters > 0 ? (subject.currentChapter / subject.totalChapters) * 100 : 0;
+            let performanceLabel;
+            let performanceColor;
+            if (performanceScore < 30) {
+                performanceLabel = 'Bad';
+                performanceColor = '#ef4444';
+            } else if (performanceScore < 80) {
+                performanceLabel = 'Average';
+                performanceColor = '#eab308';
+            } else {
+                performanceLabel = 'Perfect';
+                performanceColor = '#22c55e';
+            }
+
+            if (charts[subject.id]) {
+                charts[subject.id].destroy();
+            }
+
+            charts[subject.id] = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: ['Consistent Days', 'Performance'],
+                    datasets: [{
+                        label: 'Study Stats',
+                        data: [consistentDays, performanceScore],
+                        backgroundColor: ['#3b82f6', performanceColor],
+                        borderColor: ['#1e40af', performanceColor],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: { display: true, text: 'Value' }
+                        }
+                    },
+                    plugins: {
+                        title: { display: true, text: `${subject.name} Performance (${performanceLabel})` },
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // Render Subjects
+        function renderSubjects(subjects = subjectsData) {
+            const subjectsDiv = document.getElementById('subjects');
+            subjectsDiv.innerHTML = '';
+            subjects.forEach(subject => {
+                const progress = subject.totalChapters > 0 ? (subject.currentChapter / subject.totalChapters) * 100 : 0;
+                const priorityColor = {
+                    High: 'bg-red-500',
+                    Medium: 'bg-yellow-500',
+                    Low: 'bg-green-500'
+                }[subject.priority];
+                const timeRemaining = getTimeRemaining(subject.startDate, subject.endDate);
+                const subjectDiv = document.createElement('div');
+                subjectDiv.className = 'subject-container p-6 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition duration-300 relative';
+                subjectDiv.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">${subject.name}</h3>
+                        <div class="flex gap-2">
+                            <button onclick="openEditModal(${subject.id})" class="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600 transition duration-300" aria-label="Edit Subject">Edit</button>
+                            <button onclick="deleteSubject(${subject.id})" class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300" aria-label="Delete Subject">Delete</button>
+                        </div>
+                    </div>
+                    <div class="relative bg-gray-200 rounded-full h-2 mb-4 progress-bar" title="${subject.currentChapter}/${subject.totalChapters} chapters completed">
+                        <div class="bg-gradient-to-r from-blue-500 to-teal-500 h-full rounded-full progress-bar" style="width: ${progress}%"></div>
+                        <span class="absolute top-[-20px] right-0 text-xs text-gray-600">${progress.toFixed(0)}%</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-2">Chapters: ${subject.currentChapter}/${subject.totalChapters}</p>
+                    <p class="text-sm text-gray-600 mb-2">Start: ${subject.startDate}</p>
+                    <p class="text-sm text-gray-600 mb-2">End: ${subject.endDate}</p>
+                    ${timeRemaining ? `<p class="text-sm font-semibold text-teal-600 mb-2">Time Left: ${timeRemaining.days} days, ${timeRemaining.hours} hours 🚀</p>` : ''}
+                    <span class="${priorityColor} text-white text-xs font-semibold px-2 py-1 rounded-full">${subject.priority} Priority</span>
+                    <div class="absolute bottom-4 right-4 bg-gray-100 p-2 rounded-md shadow-md">
+                        <p class="text-xs text-gray-700 mb-1">Chapter Completed Today?</p>
+                        <div class="flex gap-2">
+                            <button onclick="logProgress(${subject.id}, true)" class="bg-green-500 text-white px-2 py-1 rounded-md hover:bg-green-600 transition duration-300 text-xs">Yes</button>
+                            <button onclick="logProgress(${subject.id}, false)" class="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 transition duration-300 text-xs">No</button>
+                        </div>
+                    </div>
+                `;
+                subjectsDiv.appendChild(subjectDiv);
+
+                // Render graph if end date is reached
+                const today = getTodayDate();
+                if (today > subject.endDate) {
+                    renderGraph(subject, subjectDiv);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
